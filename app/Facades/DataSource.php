@@ -7,7 +7,7 @@ use App\Services\DataSource\DataSourceResult;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static DataSourceResult|DataSourceException read(string $path_to_file, string $format, int $offset = 0)
+ * @method static DataSourceResult|DataSourceException read(string $path_to_file, int $offset = 0)
  */
 class DataSource extends Facade
 {
