@@ -2,6 +2,7 @@
 
 namespace App\Services\DataImport;
 
+use App\Events\DataImportJobAborted;
 use App\Events\DataImportJobFailed;
 use App\Events\DataImportJobFinished;
 use App\Events\DataImportJobProcessed;
@@ -26,8 +27,6 @@ class DataImport
     }
 
     /**
-     * @param string $path_to_file
-     * @param string $driver
      * @throws DataImportException
      */
     public function define(string $path_to_file, string $driver) : void
@@ -44,7 +43,8 @@ class DataImport
 
         $record = $this->repository->create([
             'file_path' => $path_to_file,
-            'driver' => $driver::class
+            'driver' => $driver::class,
+            'last_position' => 0
         ]);
 
         if ($record) {
@@ -59,15 +59,18 @@ class DataImport
     }
 
     /**
-     * @param int $id
      * @throws DataImportException
      */
     public function process(int $id) : void
     {
         $record = $this->repository->getById($id);
         if ($record) {
+            if($record['status']==='aborted'){
+                return;
+            }
+
             try {
-                $data = DataSource::read($record['file_path'], $record['last_position'] ?? 0);
+                $data = DataSource::read($record['file_path'], $record['last_position']);
                 $driver = $this->retrieveDriver($record['driver']);
                 $finished = $driver->handle($data->toArray());
                 $this->handleNext($record,  $data->getPosition(), $finished);
@@ -99,15 +102,38 @@ class DataImport
         }
     }
 
-    protected function updateRecordAfterRun(array $record, int $position) : void
+    /**
+     * @throws DataImportException
+     */
+    public function abort(int $id) : void
     {
+        $record = $this->repository->getById($id);
+        if ($record) {
+            $this->repository->update($id, ['status' => 'aborted']);
+            DataImportJobAborted::dispatch($record);
+        } else {
+            Log::error("tried to abort a non-existing data import job!", ["id" => $id]);
+            throw new DataImportException(
+                __("data_import.process_does_not_exist", ["id" => $id]),
+                104
+            );
+        }
+    }
 
-
-        $this->repository->update($record['id'], [
-            'status' => 'running',
-            'last_position' => $position,
-            'ran_at' => Carbon::now()->toString()
-        ]);
+    /**
+     * @throws DataImportException
+     */
+    public function get(int $id) : array
+    {
+        $record = $this->repository->getById($id);
+        if (!$record) {
+            Log::error("tried to abort a non-existing data import job!", ["id" => $id]);
+            throw new DataImportException(
+                __("data_import.process_does_not_exist", ["id" => $id]),
+                104
+            );
+        }
+        return $record;
     }
 
     protected function handleNext(array $record, int $position, bool $finished) : void

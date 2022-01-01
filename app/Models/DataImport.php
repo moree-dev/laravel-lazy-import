@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $file_path
  * @property string $driver
  * @property string $status enum pending|running|paused|aborted
- * @property int $last_offset
+ * @property int $last_position
  * @property Carbon $ran_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
