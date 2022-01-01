@@ -14,14 +14,16 @@ class DataSource
     /**
      * @throws DataSourceException
      */
-    public function read(string $path_to_file, string $format, int $offset = 0) : DataSourceResult
+    public function read(string $path_to_file, int $offset = 0) : DataSourceResult
     {
         if (!file_exists($path_to_file)) {
             Log::error("tried to read a non-existing file!", ["file" => $path_to_file]);
             throw new DataSourceException(__("data_source.file_does_not_exist", ["file" => $path_to_file]), 101);
         }
 
-        $driver = $this->retrieveDriver($format);
+        $extension = pathinfo($path_to_file, PATHINFO_EXTENSION);
+
+        $driver = $this->retrieveDriver($extension);
         $character_length = config("data_source.character_length");
 
         return $driver->read($path_to_file, $offset, $character_length);
