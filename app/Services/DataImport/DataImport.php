@@ -4,6 +4,7 @@ namespace App\Services\DataImport;
 
 use App\Events\DataImportJobFailed;
 use App\Events\DataImportJobFinished;
+use App\Events\DataImportJobProcessed;
 use App\Events\DataImportJobStarted;
 use App\Events\NewDataImportDefined;
 use App\Exceptions\DataImportException;
@@ -61,21 +62,15 @@ class DataImport
      * @param int $id
      * @throws DataImportException
      */
-    public function handleStep(int $id)
+    public function process(int $id) : void
     {
         $record = $this->repository->getById($id);
         if ($record) {
             try {
-                $data = DataSource::read($record['file_path'], 'json');
+                $data = DataSource::read($record['file_path'], $record['last_position'] ?? 0);
                 $driver = $this->retrieveDriver($record['driver']);
                 $finished = $driver->handle($data->toArray());
-                $this->updateRecordAfterRun($record, $data->getPosition());
-
-                if ($finished) {
-                    $this->dispatchFinished($record);
-                } else {
-                    $this->dispatchNextStep($record);
-                }
+                $this->handleNext($record,  $data->getPosition(), $finished);
             } catch (DataSourceException $exception) {
                 DataImportJobFailed::dispatch($id);
                 throw new DataImportException(
@@ -106,8 +101,7 @@ class DataImport
 
     protected function updateRecordAfterRun(array $record, int $position) : void
     {
-        if($record['status']==='pending')
-            DataImportJobStarted::dispatch($record);
+
 
         $this->repository->update($record['id'], [
             'status' => 'running',
@@ -116,12 +110,31 @@ class DataImport
         ]);
     }
 
-    protected function dispatchNextStep(array $record) : void
+    protected function handleNext(array $record, int $position, bool $finished) : void
     {
+        if ($record['status']==='pending') {
+            DataImportJobStarted::dispatch($record);
+        }
 
+        if ($finished) {
+            $record = $this->repository->update($record['id'], [
+                'status' => 'finished',
+                'last_position' => $position,
+                'ran_at' => Carbon::now()->toString()
+            ]);
+            DataImportJobFinished::dispatch($record);
+        } else {
+            $record = $this->repository->update($record['id'], [
+                'status' => 'finished',
+                'last_position' => $position,
+                'ran_at' => Carbon::now()->toString()
+            ]);
+        }
+
+        DataImportJobProcessed::dispatch($record, $finished);
     }
 
-    protected function dispatchFinished(array $record) : void
+    protected function handleFinished(array $record) : void
     {
         DataImportJobFinished::dispatch($record);
 

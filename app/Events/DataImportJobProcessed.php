@@ -7,17 +7,19 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class DataImportJobFailed
+class DataImportJobProcessed
 {
     use Dispatchable;
     use InteractsWithSockets;
     use SerializesModels;
 
-    public int $id;
+    public array $record;
+    public bool $finished;
 
-    public function __construct(int $id)
+    public function __construct(array $record, bool $finished)
     {
-        $this->id = $id;
+        $this->record = $record;
+        $this->finished = $finished;
     }
 
     public function broadcastOn() : PrivateChannel
