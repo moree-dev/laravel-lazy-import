@@ -17,7 +17,7 @@ class CreateDataImportsTable extends Migration
             $table->id();
             $table->string('file_path', 255);
             $table->string('driver');
-            $table->enum('status', ['pending', 'running', 'paused', 'aborted']);
+            $table->enum('status', ['pending', 'running', 'paused', 'aborted', 'finished']);
             $table->bigInteger('last_position')->nullable();
             $table->dateTime('ran_at')->nullable()->default(null);
             $table->timestamps();

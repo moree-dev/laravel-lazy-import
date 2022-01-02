@@ -2,13 +2,15 @@
 
 namespace App\Listeners;
 
-use App\Events\DataImportJobProcessed;
+use App\Events\DataImportPartProcessed;
 use App\Jobs\ProcessDataImport;
 
 class DefineNextDataImportJob
 {
-    public function handle(DataImportJobProcessed $event)
+    public function handle(DataImportPartProcessed $event)
     {
-        ProcessDataImport::dispatchIf($event->finished===false, $event->record['id']);
+        if ($event->finished===false) {
+            ProcessDataImport::dispatch($event->record);
+        }
     }
 }

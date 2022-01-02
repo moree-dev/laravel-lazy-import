@@ -3,6 +3,7 @@
 namespace App\Services\DataImport\Drivers;
 
 use App\Exceptions\DataImportInvalidDataException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -71,7 +72,7 @@ class Client extends Driver
             'checked' => $record['checked'],
             'description' => $record['description'],
             'interest' => $record['interest'],
-            'date_of_birth' => $record['date_of_birth'],
+            'date_of_birth' => Carbon::make($record['date_of_birth']),
             'email' => $record['email'],
             'account' => $record['account'],
         ]);

@@ -2,11 +2,11 @@
 
 namespace App\Services\DataImport;
 
-use App\Events\DataImportJobAborted;
-use App\Events\DataImportJobFailed;
-use App\Events\DataImportJobFinished;
-use App\Events\DataImportJobProcessed;
-use App\Events\DataImportJobStarted;
+use App\Events\DataImportProcessAborted;
+use App\Events\DataImportProcessFailed;
+use App\Events\DataImportProcessFinished;
+use App\Events\DataImportPartProcessed;
+use App\Events\DataImportProcessStarted;
 use App\Events\NewDataImportDefined;
 use App\Exceptions\DataImportException;
 use App\Exceptions\DataImportInvalidDataException;
@@ -15,7 +15,6 @@ use App\Facades\DataSource;
 use App\Services\DataImport\Drivers\Driver;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class DataImport
 {
@@ -63,40 +62,42 @@ class DataImport
      */
     public function process(int $id) : void
     {
-        $record = $this->repository->getById($id);
-        if ($record) {
-            if($record['status']==='aborted'){
+        $process = $this->repository->getById($id);
+        if ($process) {
+            if($process['status']==='aborted'){
                 return;
             }
 
             try {
-                $data = DataSource::read($record['file_path'], $record['last_position']);
-                $driver = $this->retrieveDriver($record['driver']);
-                $finished = $driver->handle($data->toArray());
-                $this->handleNext($record,  $data->getPosition(), $finished);
+                $data = DataSource::read($process['file_path'], $process['last_position']);
+                $driver = $this->retrieveDriver($process['driver']);
+                $driver->handle($data->toArray());
+                $this->handleNext($process,  $data->getPosition(), $data->isFinished());
+
+                Log::debug('part', ['finished' => $data->isFinished(), 'process' => $data->getPosition()]);
             } catch (DataSourceException $exception) {
-                DataImportJobFailed::dispatch($id);
+                DataImportProcessFailed::dispatch($id);
                 throw new DataImportException(
                     __('data_import.data_source_error', ['id' => $id, 'message' => $exception->getMessage()]),
                     ["id" => $id],
                     105
                 );
             } catch (DataImportInvalidDataException $exception) {
-                DataImportJobFailed::dispatch($id);
+                DataImportProcessFailed::dispatch($id);
                 throw new DataImportException(
                     __('data_import.invalid_data', ['id' => $id, 'message' => $exception->getMessage()]),
                     ["id" => $id],
                     106
                 );
             } catch (\Throwable $exception) {
-                DataImportJobFailed::dispatch($id);
+                DataImportProcessFailed::dispatch($id);
                 throw new DataImportException(
                     __('data_import.unknown_error', ['id' => $id, 'message' => $exception->getMessage()]),
                     107,
                 );
             }
         } else {
-            DataImportJobFailed::dispatch($id);
+            DataImportProcessFailed::dispatch($id);
             Log::error("tried to retrieve a non-existing data import process!", ["id" => $id]);
             throw new DataImportException(__("data_import.process_does_not_exist", ["id" => $id]), 104);
         }
@@ -107,10 +108,10 @@ class DataImport
      */
     public function abort(int $id) : void
     {
-        $record = $this->repository->getById($id);
-        if ($record) {
+        $process = $this->repository->getById($id);
+        if ($process) {
             $this->repository->update($id, ['status' => 'aborted']);
-            DataImportJobAborted::dispatch($record);
+            DataImportProcessAborted::dispatch($process);
         } else {
             Log::error("tried to abort a non-existing data import job!", ["id" => $id]);
             throw new DataImportException(
@@ -125,48 +126,47 @@ class DataImport
      */
     public function get(int $id) : array
     {
-        $record = $this->repository->getById($id);
-        if (!$record) {
+        $process = $this->repository->getById($id);
+        if (!$process) {
             Log::error("tried to abort a non-existing data import job!", ["id" => $id]);
             throw new DataImportException(
                 __("data_import.process_does_not_exist", ["id" => $id]),
                 104
             );
         }
-        return $record;
+        return $process;
     }
 
-    protected function handleNext(array $record, int $position, bool $finished) : void
+    protected function handleNext(array $process, int $position, bool $finished) : void
     {
-        if ($record['status']==='pending') {
-            DataImportJobStarted::dispatch($record);
+        if ($process['status']==='pending') {
+            DataImportProcessStarted::dispatch($process);
         }
 
         if ($finished) {
-            $record = $this->repository->update($record['id'], [
+            $process = $this->repository->update($process['id'], [
                 'status' => 'finished',
                 'last_position' => $position,
-                'ran_at' => Carbon::now()->toString()
+                'ran_at' => Carbon::now()
             ]);
-            DataImportJobFinished::dispatch($record);
+            DataImportProcessFinished::dispatch($process);
         } else {
-            $record = $this->repository->update($record['id'], [
-                'status' => 'finished',
+            $process = $this->repository->update($process['id'], [
                 'last_position' => $position,
-                'ran_at' => Carbon::now()->toString()
+                'ran_at' => Carbon::now()
             ]);
         }
 
-        DataImportJobProcessed::dispatch($record, $finished);
+        DataImportPartProcessed::dispatch($process, $finished);
     }
 
-    protected function handleFinished(array $record) : void
+    protected function handleFinished(array $process) : void
     {
-        DataImportJobFinished::dispatch($record);
+        DataImportProcessFinished::dispatch($process);
 
-        $this->repository->update($record['id'], [
+        $this->repository->update($process['id'], [
             'status' => 'finished',
-            'ran_at' => Carbon::now()->toString()
+            'ran_at' => Carbon::now()
         ]);
     }
 
@@ -175,13 +175,12 @@ class DataImport
      */
     protected function retrieveDriver(string $driver) : Driver
     {
-        $target_driver_class = "App\Services\DataImport\Drivers\\".Str::studly($driver);
-        if (class_exists($target_driver_class)) {
-            return new $target_driver_class();
+        if (class_exists($driver)) {
+            return new $driver();
         } else {
-            Log::error("an unknown driver called!", ["driver" => $target_driver_class]);
+            Log::error("an unknown driver called!", ["driver" => $driver]);
             throw new DataImportException(
-                __("data_import.driver_does_not_exist", ["driver" => $target_driver_class]),
+                __("data_import.driver_does_not_exist", ["driver" => $driver]),
                 102
             );
         }

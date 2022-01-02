@@ -9,6 +9,6 @@ class DefineNewDataImportJob
 {
     public function handle(NewDataImportDefined $event)
     {
-        ProcessDataImport::dispatch($event->record['id']);
+        ProcessDataImport::dispatch($event->record);
     }
 }

@@ -31,8 +31,8 @@ class ProcessDataImport implements ShouldQueue, ShouldBeUnique
         return $this->record['id'].'.'.$this->record['last_position'];
     }
 
-    public function handle(int $id) : void
+    public function handle() : void
     {
-        DataImport::process($id);
+        DataImport::process($this->record['id']);
     }
 }

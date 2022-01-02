@@ -12,10 +12,13 @@ class DataSourceResult implements Arrayable
 
     protected int $position;
 
-    public function __construct(array $data, int $position)
+    protected bool $isFinished;
+
+    public function __construct(array $data, int $position, bool $is_finished = false)
     {
         $this->data = $data;
         $this->position = $position;
+        $this->isFinished = $is_finished;
     }
 
     public function toArray() : array
@@ -26,5 +29,10 @@ class DataSourceResult implements Arrayable
     public function getPosition() : int
     {
         return $this->position;
+    }
+
+    public function isFinished() : bool
+    {
+        return $this->isFinished;
     }
 }
