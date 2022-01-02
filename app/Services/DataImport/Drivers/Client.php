@@ -56,7 +56,7 @@ class Client extends Driver
         } catch (ValidationException $exception) {
             Log::error("data import incorrect data was found!", ["driver" => self::class, 'data' => $record, 'errors' => $exception->errors()]);
             if ($this->strictValidation()) {
-                throw new DataImportInvalidDataException(__("data_import.invalid_record", ["message" => $exception->getMessage()]));
+                throw new DataImportInvalidDataException(__("data_import.invalid_data", ["message" => $exception->getMessage()]));
             } else {
                 return false;
             }
