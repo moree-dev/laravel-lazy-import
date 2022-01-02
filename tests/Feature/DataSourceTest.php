@@ -14,14 +14,14 @@ class DataSourceTest extends TestCase
     {
         $this->expectException(DataSourceException::class);
         $this->expectExceptionCode(101);
-        DataSource::read(Str::random(20), 'json');
+        DataSource::read(Str::random(20));
     }
 
     public function test_wrong_driver_file()
     {
         $this->expectException(DataSourceException::class);
         $this->expectExceptionCode(102);
-        DataSource::read(storage_path('customers.json'), 'non-existing-driver');
+        DataSource::read(storage_path('customers.unknown'));
     }
 
     public function test_json_driver_character_length_exception()
@@ -29,14 +29,14 @@ class DataSourceTest extends TestCase
         config(['data_source.character_length' => 1]);
         $this->expectException(DataSourceException::class);
         $this->expectExceptionCode(104);
-        DataSource::read(storage_path('customers.json'), 'json');
+        DataSource::read(storage_path('customers.json'));
     }
 
     public function test_json_driver_works_normally()
     {
         config(['data_source.character_length' => 2000]);
-        $result = DataSource::read(storage_path('customers.json'), 'json');
-        $result2 = DataSource::read(storage_path('customers.json'), 'json', $result->getPosition());
+        $result = DataSource::read(storage_path('customers.json'));
+        $result2 = DataSource::read(storage_path('customers.json'), $result->getPosition());
         $this->assertInstanceOf(DataSourceResult::class, $result);
         $this->assertIsArray($result->toArray());
         $this->assertArrayHasKey(0, $result->toArray());
