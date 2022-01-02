@@ -20,8 +20,7 @@ class CreateCreditCardsTable extends Migration
             $table->string('type');
             $table->string('number');
             $table->string('name');
-            $table->tinyInteger('expiration_month');
-            $table->tinyInteger('expiration_year');
+            $table->string('expiration_date');
             $table->timestamps();
         });
     }
