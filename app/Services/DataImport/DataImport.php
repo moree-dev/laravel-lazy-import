@@ -73,8 +73,6 @@ class DataImport
                 $driver = $this->retrieveDriver($process['driver']);
                 $driver->handle($data->toArray());
                 $this->handleNext($process,  $data->getPosition(), $data->isFinished());
-
-                Log::debug('part', ['finished' => $data->isFinished(), 'process' => $data->getPosition()]);
             } catch (DataSourceException $exception) {
                 DataImportProcessFailed::dispatch($id);
                 throw new DataImportException(
