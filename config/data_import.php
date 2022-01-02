@@ -33,7 +33,11 @@ return [
             "filters" => [
                 \App\Services\DataImport\Drivers\Filters\FilterClientByAge::class,
                 \App\Services\DataImport\Drivers\Filters\FilterClientByCreditCardPattern::class
-            ]
+            ],
+            'min_client_age' => env('MIN_CLIENT_AGE', null),
+            'max_client_age' => env('MAX_CLIENT_AGE', null),
+            'allow_unknown_age' => env('CLIENT_AGE_ALLOW_UNKNOWN', true),
+            'card_number_pattern' => env('CLIENT_CARD_NUMBER_PATTERN', null)
         ]
     ]
 ];

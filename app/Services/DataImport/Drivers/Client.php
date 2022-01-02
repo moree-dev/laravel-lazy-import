@@ -72,7 +72,7 @@ class Client extends Driver
             'checked' => $record['checked'],
             'description' => $record['description'],
             'interest' => $record['interest'],
-            'date_of_birth' => Carbon::make($record['date_of_birth']),
+            'date_of_birth' => $record['date_of_birth'] ? Carbon::make($record['date_of_birth']) : null,
             'email' => $record['email'],
             'account' => $record['account'],
         ]);

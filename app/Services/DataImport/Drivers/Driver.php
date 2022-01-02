@@ -26,16 +26,13 @@ abstract class Driver
     protected function filterData(array $data) : array
     {
         $filters = (array) config('data_import.drivers.'.$this::class.'.filters', []);
-        if ($filters) {
-            $data = collect($data)->filter(function ($record) use ($filters) : bool {
-                foreach ($filters as $filter) {
-                    if ($filter::handle($record)===false) {
-                        return false;
-                    }
+        foreach ($data as $key => &$row) {
+            foreach ($filters as $filter) {
+                if ($filter::handle($row)===false) {
+                    unset($data[$key]);
                 }
-                return true;
-            })->toArray();
+            }
         }
-        return $data;
+        return array_values($data);
     }
 }
