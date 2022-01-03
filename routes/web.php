@@ -15,8 +15,6 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    $result = DataSource::read(storage_path('customers.json'), 'json', 2000);
-
     return view('welcome');
 });
 
